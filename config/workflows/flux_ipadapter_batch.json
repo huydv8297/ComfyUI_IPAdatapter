@@ -1,0 +1,109 @@
+{
+    "1": {
+        "inputs": {
+            "image": "style_image.png",
+            "upload": "image"
+        },
+        "class_type": "LoadImage"
+    },
+    "2": {
+        "inputs": {
+            "unet_name": "flux1-schnell-fp8.safetensors"
+        },
+        "class_type": "UNETLoader"
+    },
+    "3": {
+        "inputs": {
+            "noise_seed": 42,
+            "width": 1024,
+            "height": 1024
+        },
+        "class_type": "RandomNoise"
+    },
+    "4": {
+        "inputs": {
+            "noise": ["3", 0],
+            "steps": 4,
+            "cfg": 1.0,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1.0,
+            "model": ["7", 0],
+            "positive": ["6", 0],
+            "negative": ["8", 0],
+            "latent_image": ["11", 0]
+        },
+        "class_type": "KSampler"
+    },
+    "5": {
+        "inputs": {
+            "vae_name": "ae.safetensors"
+        },
+        "class_type": "VAELoader"
+    },
+    "6": {
+        "inputs": {
+            "text": "a beautiful landscape, highly detailed, 8k",
+            "clip": ["9", 0]
+        },
+        "class_type": "CLIPTextEncode"
+    },
+    "7": {
+        "inputs": {
+            "model": ["2", 0],
+            "ipadapter": ["10", 0],
+            "image": ["1", 0],
+            "weight": 0.7,
+            "noise": 0.4,
+            "start_at": 0.0,
+            "end_at": 1.0,
+            "weight_type": "linear",
+            "attn_mask": null,
+            "preset": "LIGHT"
+        },
+        "class_type": "IPAdapterApply"
+    },
+    "8": {
+        "inputs": {
+            "text": "",
+            "clip": ["9", 0]
+        },
+        "class_type": "CLIPTextEncode"
+    },
+    "9": {
+        "inputs": {
+            "clip_name1": "clip_l.safetensors",
+            "clip_name2": "t5xxl_fp8.safetensors",
+            "type": "flux"
+        },
+        "class_type": "DualCLIPLoader"
+    },
+    "10": {
+        "inputs": {
+            "model_name": "ip-adapter-flux-fp8.safetensors"
+        },
+        "class_type": "IPAdapterModelLoader"
+    },
+    "11": {
+        "inputs": {
+            "width": 1024,
+            "height": 1024,
+            "batch_size": 1
+        },
+        "class_type": "EmptyLatentImage"
+    },
+    "12": {
+        "inputs": {
+            "samples": ["4", 0],
+            "vae": ["5", 0]
+        },
+        "class_type": "VAEDecode"
+    },
+    "13": {
+        "inputs": {
+            "images": ["12", 0],
+            "filename_prefix": "ComfyUI"
+        },
+        "class_type": "SaveImage"
+    }
+}

@@ -261,7 +261,7 @@ start_phase() {
         info "Đợi ngrok tunnel..."
         sleep 3
         for i in $(seq 1 15); do
-            API=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null || echo "")
+            API=$(curl -s http://0.0.0.0:4040/api/tunnels 2>/dev/null || echo "")
             NGROK_URL=$(echo "$API" | python3 -c "
 import sys, json
 try:

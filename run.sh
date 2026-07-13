@@ -65,13 +65,6 @@ setup_phase() {
         sudo apt-get update -qq && sudo apt-get install -y -qq python3-venv python3-pip
     fi
 
-    # Kiểm tra đang chạy bằng root không
-    if [ "$EUID" = "0" ] 2>/dev/null || [ "$(id -u)" = "0" ] 2>/dev/null; then
-        warn "⚠️  BẠN ĐANG CHẠY BẰNG ROOT! Nên dùng user thường."
-        warn "   Tạo user mới: sudo adduser ubuntu && sudo usermod -aG sudo ubuntu && su - ubuntu"
-        warn "   Hoặc: export COMFYUI_NONROOT=1 (bỏ qua cảnh báo)"
-    fi
-
     # Đã setup chưa?
     if [ -f "$REPO_DIR/.setup_done" ]; then
         log "Setup đã hoàn thành trước đó, bỏ qua PHASE 1."

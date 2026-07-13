@@ -82,7 +82,7 @@ echo "  → Đợi ngrok tunnel..."
 sleep 3
 NGROK_URL=""
 for i in $(seq 1 15); do
-    NGROK_API=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null)
+    NGROK_API=$(curl -s http://0.0.0.0:4040/api/tunnels 2>/dev/null)
     NGROK_URL=$(echo "$NGROK_API" | python3 -c "import sys,json; tunnels=json.load(sys.stdin).get('tunnels',[]); print(tunnels[0]['public_url'] if tunnels else '')" 2>/dev/null || true)
     if [ -n "$NGROK_URL" ]; then
         break

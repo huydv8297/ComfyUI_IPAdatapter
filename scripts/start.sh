@@ -52,6 +52,12 @@ echo "  → Starting ngrok tunnel..."
 cd "$REPO_DIR"
 mkdir -p logs
 rm -f "$REPO_DIR/logs/ngrok_url.txt"
+
+if ! "$VENV_DIR/bin/python" -c "import pyngrok" 2>/dev/null; then
+    echo "  → Thư viện pyngrok chưa được cài đặt trong venv. Đang cài đặt..."
+    "$VENV_DIR/bin/pip" install pyngrok
+fi
+
 "$VENV_DIR/bin/python" "$REPO_DIR/scripts/start_ngrok.py" \
     > "$REPO_DIR/logs/ngrok.log" 2>&1 &
 NGROK_PID=$!

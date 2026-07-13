@@ -229,6 +229,12 @@ start_phase() {
     cd "$REPO_DIR"
     log "Starting ngrok tunnel..."
     rm -f "$REPO_DIR/logs/ngrok_url.txt"
+
+    if ! "$REPO_DIR/venv/bin/python" -c "import pyngrok" 2>/dev/null; then
+        warn "Thư viện pyngrok chưa được cài đặt trong venv. Đang cài đặt..."
+        "$REPO_DIR/venv/bin/pip" install pyngrok
+    fi
+
     "$REPO_DIR/venv/bin/python" "$REPO_DIR/scripts/start_ngrok.py" \
         > "$REPO_DIR/logs/ngrok.log" 2>&1 &
     NGROK_PID=$!

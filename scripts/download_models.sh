@@ -186,9 +186,9 @@ download_file \
 # 6. IPAdapter FLUX - thử nhiều source
 mkdir -p "$COMFYUI_DIR/models/ipadapter"
 download_file \
-    "https://huggingface.co/h94/IP-Adapter-Flux/resolve/main/ip-adapter-flux-fp8.safetensors" \
+    "https://huggingface.co/XLabs-AI/flux-ip-adapter-v2/resolve/main/ip_adapter.safetensors" \
     "$COMFYUI_DIR/models/ipadapter" \
-    "ip-adapter-flux-fp8.safetensors"
+    "ip-adapter-flux.safetensors"
 
 echo ""
 echo "=================================================="

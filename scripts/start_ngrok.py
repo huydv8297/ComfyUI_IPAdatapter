@@ -40,7 +40,8 @@ try:
 
     # Tạo tunnel mới
     print(f"[Ngrok] Khởi tạo tunnel tới port {comfyui_port}...")
-    public_url = ngrok.connect(comfyui_port, bind_tls=True, host_header="0.0.0.0")
+    public_url_obj = ngrok.connect(comfyui_port, bind_tls=True, host_header="0.0.0.0")
+    public_url = public_url_obj.public_url
     
     print("==================================================")
     print("🔗 LINK TRUY CẬP COMFYUI CỦA BẠN:")

@@ -11,24 +11,88 @@ mkdir -p "$COMFYUI_DIR/models/vae"
 mkdir -p "$COMFYUI_DIR/models/ipadapter"
 mkdir -p "$COMFYUI_DIR/models/controlnet"
 
+# Chọn công cụ download ưu tiên: huggingface-cli > curl > wget > python
+DOWNLOADER=""
+if command -v huggingface-cli &>/dev/null; then
+    DOWNLOADER="hf"
+elif command -v curl &>/dev/null; then
+    DOWNLOADER="curl"
+elif command -v wget &>/dev/null; then
+    DOWNLOADER="wget"
+elif command -v python3 &>/dev/null; then
+    # Kiểm tra requests có sẵn không
+    if python3 -c "import requests" 2>/dev/null; then
+        DOWNLOADER="py"
+    else
+        echo "  → Cài requests cho Python fallback..."
+        pip install requests -q 2>/dev/null || python3 -m pip install requests -q 2>/dev/null || true
+        if python3 -c "import requests" 2>/dev/null; then
+            DOWNLOADER="py"
+        fi
+    fi
+fi
+
 download_file() {
     local url="$1"
     local output_dir="$2"
     local filename="$3"
     
     if [ -f "$output_dir/$filename" ]; then
-        echo "  → $filename đã tồn tại, bỏ qua..."
-        return 0
+        local size=$(stat -c%s "$output_dir/$filename" 2>/dev/null || stat -f%z "$output_dir/$filename" 2>/dev/null)
+        if [ "${size:-0}" -gt 1048576 ]; then
+            echo "  → $filename đã tồn tại ($(( size / 1048576 )) MB), bỏ qua..."
+            return 0
+        fi
     fi
     
     echo "  → Downloading $filename..."
-    wget -q --show-progress -O "$output_dir/$filename" "$url"
+    
+    case "$DOWNLOADER" in
+        hf)
+            # huggingface-cli: parse repo_id và filename từ URL
+            local repo_file=$(echo "$url" | sed 's|https://huggingface.co/||' | sed 's|/resolve/main/| |')
+            local repo_id=$(echo "$repo_file" | awk '{print $1}')
+            local file_path=$(echo "$repo_file" | awk '{print $2}')
+            huggingface-cli download "$repo_id" "$file_path" --local-dir "$output_dir" --local-dir-use-symlinks False --resume-download 2>&1 | tail -1
+            ;;
+        curl)
+            curl -L -C - --retry 3 --retry-delay 5 -o "$output_dir/$filename" "$url" 2>&1
+            ;;
+        wget)
+            wget -q --show-progress -O "$output_dir/$filename" "$url" 2>&1 || \
+                wget -q -O "$output_dir/$filename" "$url" 2>&1
+            ;;
+        py)
+            python3 -c "
+import requests, sys, os
+url = '$url'
+out = '$output_dir/$filename'
+os.makedirs(os.path.dirname(out), exist_ok=True)
+resp = requests.get(url, stream=True, timeout=300)
+resp.raise_for_status()
+total = int(resp.headers.get('content-length', 0))
+downloaded = 0
+with open(out, 'wb') as f:
+    for chunk in resp.iter_content(chunk_size=8192):
+        f.write(chunk)
+        downloaded += len(chunk)
+        if total:
+            pct = downloaded * 100 // total
+            sys.stderr.write(f'\r  {pct}% ({downloaded//1048576}MB/{total//1048576}MB)')
+sys.stderr.write('\n')
+" 2>&1
+            ;;
+        *)
+            echo "  LỖI: Không tìm thấy curl, wget hay python3 để download!"
+            return 1
+            ;;
+    esac
     
     # Verify file không bị lỗi (check size > 1MB)
     local size=$(stat -c%s "$output_dir/$filename" 2>/dev/null || stat -f%z "$output_dir/$filename" 2>/dev/null)
-    if [ "$size" -lt 1048576 ]; then
-        echo "  LỖI: $filename quá nhỏ (${size} bytes), download thất bại!"
-        rm -f "$output_dir/$filename"
+    if [ "${size:-0}" -lt 1048576 ]; then
+        echo "  LỖI: $filename quá nhỏ (${size:-0} bytes), download thất bại!"
+        rm -f "$output_dir/$filename" 2>/dev/null
         return 1
     fi
     echo "  → OK! ($(( size / 1048576 )) MB)"

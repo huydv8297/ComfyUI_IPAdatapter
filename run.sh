@@ -154,11 +154,6 @@ configure_phase() {
             warn "Bỏ qua cấu hình token. Ngrok sẽ dùng free tunnel."
         fi
     fi
-
-    # Apply token
-    if [ -n "$NGROK_TOKEN" ] && [ "$NGROK_TOKEN" != "your-ngrok-auth-token-here" ] && [ -f "$REPO_DIR/ngrok" ]; then
-        "$REPO_DIR/ngrok" config add-authtoken "$NGROK_TOKEN" 2>/dev/null || true
-    fi
 }
 
 # -----------------------------------------------------------
@@ -232,14 +227,11 @@ start_phase() {
 
     # Start Ngrok
     cd "$REPO_DIR"
-    if [ -f "$REPO_DIR/ngrok" ]; then
-        log "Starting ngrok tunnel..."
-        "$REPO_DIR/ngrok" http 8188 --log=stdout > "$REPO_DIR/logs/ngrok.log" 2>&1 &
-        NGROK_PID=$!
-    else
-        warn "Ngrok không tìm thấy, bỏ qua tunnel."
-        NGROK_PID=""
-    fi
+    log "Starting ngrok tunnel..."
+    rm -f "$REPO_DIR/logs/ngrok_url.txt"
+    "$REPO_DIR/venv/bin/python" "$REPO_DIR/scripts/start_ngrok.py" \
+        > "$REPO_DIR/logs/ngrok.log" 2>&1 &
+    NGROK_PID=$!
 
     # Đợi ComfyUI sẵn sàng
     echo ""
@@ -257,25 +249,17 @@ start_phase() {
 
     # Lấy URL ngrok
     NGROK_URL=""
-    if [ -n "$NGROK_PID" ]; then
-        info "Đợi ngrok tunnel..."
-        sleep 3
-        for i in $(seq 1 15); do
-            API=$(curl -s http://0.0.0.0:4040/api/tunnels 2>/dev/null || echo "")
-            NGROK_URL=$(echo "$API" | python3 -c "
-import sys, json
-try:
-    tunnels = json.load(sys.stdin).get('tunnels', [])
-    print(tunnels[0]['public_url'] if tunnels else '')
-except:
-    print('')
-" 2>/dev/null || true)
+    info "Đợi ngrok tunnel..."
+    sleep 3
+    for i in $(seq 1 15); do
+        if [ -f "$REPO_DIR/logs/ngrok_url.txt" ]; then
+            NGROK_URL=$(cat "$REPO_DIR/logs/ngrok_url.txt")
             if [ -n "$NGROK_URL" ]; then
                 break
             fi
-            sleep 2
-        done
-    fi
+        fi
+        sleep 2
+    done
 
     # Hiển thị kết quả
     echo ""

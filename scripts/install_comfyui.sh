@@ -55,4 +55,9 @@ echo "[ComfyUI] Cài pip requirements cho ComfyUI..."
 "$VENV_DIR/bin/pip" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 2>/dev/null || \
     "$VENV_DIR/bin/python" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
+# Cài đặt pyngrok
+echo "[ComfyUI] Cài đặt pyngrok..."
+"$VENV_DIR/bin/pip" install pyngrok 2>/dev/null || \
+    "$VENV_DIR/bin/python" -m pip install pyngrok
+
 echo "[ComfyUI] OK!"

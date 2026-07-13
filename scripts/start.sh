@@ -37,13 +37,6 @@ if [ ! -f "$VENV_DIR/bin/python" ]; then
     bash "$REPO_DIR/scripts/install_comfyui.sh"
 fi
 
-# Auth ngrok nếu có token
-NGROK_CMD=$(command -v ngrok 2>/dev/null || echo "$NGROK")
-if [ -n "$NGROK_TOKEN" ] && [ -f "$NGROK_CMD" ]; then
-    echo "  → Cấu hình ngrok token..."
-    "$NGROK_CMD" config add-authtoken "$NGROK_TOKEN" 2>/dev/null || true
-fi
-
 # Start ComfyUI
 echo "  → Starting ComfyUI backend..."
 cd "$COMFYUI_DIR"
@@ -54,12 +47,12 @@ cd "$COMFYUI_DIR"
     > "$REPO_DIR/logs/comfyui.log" 2>&1 &
 COMFYUI_PID=$!
 
-# Start ngrok tunnel
+# Start ngrok tunnel using pyngrok
 echo "  → Starting ngrok tunnel..."
 cd "$REPO_DIR"
 mkdir -p logs
-"$NGROK" http "$COMFYUI_PORT" \
-    --log=stdout \
+rm -f "$REPO_DIR/logs/ngrok_url.txt"
+"$VENV_DIR/bin/python" "$REPO_DIR/scripts/start_ngrok.py" \
     > "$REPO_DIR/logs/ngrok.log" 2>&1 &
 NGROK_PID=$!
 
@@ -82,10 +75,11 @@ echo "  → Đợi ngrok tunnel..."
 sleep 3
 NGROK_URL=""
 for i in $(seq 1 15); do
-    NGROK_API=$(curl -s http://0.0.0.0:4040/api/tunnels 2>/dev/null)
-    NGROK_URL=$(echo "$NGROK_API" | python3 -c "import sys,json; tunnels=json.load(sys.stdin).get('tunnels',[]); print(tunnels[0]['public_url'] if tunnels else '')" 2>/dev/null || true)
-    if [ -n "$NGROK_URL" ]; then
-        break
+    if [ -f "$REPO_DIR/logs/ngrok_url.txt" ]; then
+        NGROK_URL=$(cat "$REPO_DIR/logs/ngrok_url.txt")
+        if [ -n "$NGROK_URL" ]; then
+            break
+        fi
     fi
     sleep 2
 done

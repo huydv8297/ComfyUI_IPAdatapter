@@ -170,9 +170,9 @@ download_file \
     "$CLIP_DIR" \
     "t5xxl_fp16.safetensors"
 
-# 4. VAE (ae.safetensors)
+# 4. VAE (ae.safetensors) - Dùng link ungated từ camenduru để tránh lỗi 401
 download_file \
-    "https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors" \
+    "https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/ae.safetensors" \
     "$COMFYUI_DIR/models/vae" \
     "ae.safetensors"
 

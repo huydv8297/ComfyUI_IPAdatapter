@@ -6,6 +6,8 @@ from huggingface_hub import login
 
 import os
 import gc
+import csv
+import re
 import torch
 
 # ==========================================================
@@ -14,7 +16,7 @@ import torch
 
 HF_TOKEN = "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"
 
-PROMPT_FILE = "prompts.txt"
+PROMPT_FILE = "cooking_merge_puzzle_prompts_200.csv"
 
 OUTPUT_DIR = "output"
 RAW_DIR = os.path.join(OUTPUT_DIR, "raw")
@@ -62,14 +64,40 @@ print("=" * 60)
 print("Loading prompts...")
 print("=" * 60)
 
-with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-    prompts = [
-        x.strip()
-        for x in f.readlines()
-        if x.strip()
-    ]
+def safe_filename_part(value):
+    value = str(value).strip()
+    value = re.sub(r"[\\/:*?\"<>|]+", "_", value)
+    value = re.sub(r"\s+", "_", value)
+    value = re.sub(r"_+", "_", value)
+    return value.strip("._")
 
-print(f"Found {len(prompts)} prompts")
+
+with open(PROMPT_FILE, "r", encoding="utf-8-sig", newline="") as f:
+    reader = csv.DictReader(f)
+    required_columns = {"id", "type", "level", "item_name", "prompt"}
+    missing_columns = required_columns - set(reader.fieldnames or [])
+
+    if missing_columns:
+        missing = ", ".join(sorted(missing_columns))
+        raise ValueError(f"Missing required CSV columns: {missing}")
+
+    prompt_rows = []
+
+    for row in reader:
+        prompt = row["prompt"].strip()
+
+        if not prompt:
+            continue
+
+        prompt_rows.append({
+            "id": row["id"].strip(),
+            "type": row["type"].strip(),
+            "level": row["level"].strip(),
+            "item_name": row["item_name"].strip(),
+            "prompt": prompt,
+        })
+
+print(f"Found {len(prompt_rows)} prompts")
 
 # ==========================================================
 # LOAD FLUX
@@ -82,8 +110,9 @@ print("=" * 60)
 pipe = DiffusionPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-dev",
     torch_dtype=torch.bfloat16,
-    device_map="cuda",
 )
+
+pipe.to(DEVICE)
 
 print("Loading Game Assets LoRA...")
 
@@ -109,7 +138,9 @@ print("=" * 60)
 print("Generating images...")
 print("=" * 60)
 
-for i, p in enumerate(prompts):
+generated_files = []
+
+for i, row in enumerate(prompt_rows):
 
     seed = SEED + i
 
@@ -117,9 +148,10 @@ for i, p in enumerate(prompts):
         device=DEVICE
     ).manual_seed(seed)
 
-    prompt = f"{PROMPT_PREFIX}, {p}, {PROMPT_SUFFIX}"
+    prompt = f"{PROMPT_PREFIX}, {row['prompt']}, {PROMPT_SUFFIX}"
 
-    print(f"\n[{i+1}/{len(prompts)}]")
+    print(f"\n[{i+1}/{len(prompt_rows)}]")
+    print(f"Item   : {row['type']} L{row['level']} - {row['item_name']}")
     print(f"Prompt : {prompt}")
     print(f"Seed   : {seed}")
 
@@ -133,20 +165,12 @@ for i, p in enumerate(prompts):
         width=WIDTH,
     ).images[0]
 
-    safe_name = (
-        p.replace("/", "_")
-         .replace("\\", "_")
-         .replace(":", "_")
-         .replace("*", "_")
-         .replace("?", "_")
-         .replace("\"", "")
-         .replace("<", "_")
-         .replace(">", "_")
-         .replace("|", "_")
-         .replace(" ", "_")
-    )
+    row_id = safe_filename_part(row["id"]).zfill(4)
+    item_type = safe_filename_part(row["type"])
+    level = safe_filename_part(row["level"]).zfill(2)
+    item_name = safe_filename_part(row["item_name"])
 
-    filename = f"{i:04d}_{safe_name}.png"
+    filename = f"{row_id}_{item_type}_L{level}_{item_name}.png"
 
     save_path = os.path.join(
         RAW_DIR,
@@ -154,6 +178,7 @@ for i, p in enumerate(prompts):
     )
 
     image.save(save_path)
+    generated_files.append(filename)
 
     print(f"Saved -> {save_path}")
 
@@ -243,10 +268,7 @@ print("=" * 60)
 print("Removing background...")
 print("=" * 60)
 
-files = sorted([
-    f for f in os.listdir(RAW_DIR)
-    if f.lower().endswith(".png")
-])
+files = sorted(generated_files)
 
 for i, file in enumerate(files):
 

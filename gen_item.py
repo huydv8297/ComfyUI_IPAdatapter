@@ -28,7 +28,7 @@ WIDTH = 1024
 HEIGHT = 1024
 
 GUIDANCE_SCALE = 3.5
-INFERENCE_STEPS = 28
+INFERENCE_STEPS = 24
 MAX_SEQUENCE_LENGTH = 512
 
 LORA_WEIGHT = 1.0
@@ -109,9 +109,10 @@ print("=" * 60)
 
 pipe = DiffusionPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-dev",
-    torch_dtype=torch.bfloat16,
+    torch_dtype=torch.float16,
 )
 
+# pipe.enable_model_cpu_offload()
 pipe.to(DEVICE)
 
 print("Loading Game Assets LoRA...")
@@ -125,8 +126,8 @@ pipe.set_adapters(
     adapter_weights=[LORA_WEIGHT],
 )
 
-pipe.enable_vae_slicing()
-pipe.enable_vae_tiling()
+# pipe.enable_vae_slicing()
+# pipe.enable_vae_tiling()
 
 print("FLUX Loaded.")
 
